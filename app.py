@@ -13,7 +13,7 @@ AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
 
 # Configuration 
 API_KEY = OPEN_API_KEY
-PDF_PATHS = ["pdf1.pdf", "pdf2.pdf", "pdf3.pdf"]
+PDF_PATHS = ["your pdf location here"]
 AZURE_ENDPOINT = AZURE_OPENAI_ENDPOINT
 COLLECTION_NAME = "doc_collection"
 API_VERSION = "2024-07-01-preview"
