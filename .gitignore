@@ -1,0 +1,4 @@
+.env
+old_app.py
+LLlama_OpenAI_RAG.ipynb
+chromadb/
