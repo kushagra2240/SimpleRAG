@@ -9,6 +9,7 @@ import gensim.downloader as api
 from gensim.models import Word2Vec
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+import time
 
 # Load environment variables
 load_dotenv()
@@ -74,16 +75,21 @@ def process_pdfs(client, collection, pdf_files, word2vec_model):
 
 # Query ChromaDB (now using embeddings)
 def query_chromadb(prompt, word2vec_model, n_results=3):
+    start_time = time.time()
+
     query_embedding = generate_embeddings([prompt], word2vec_model)[0]
     results = collection.query(
         query_embeddings=[query_embedding],
         n_results=n_results,
         include=["documents", "metadatas"]
     )
-    return results
+    end_time = time.time()  
+    query_time = end_time - start_time   
+    return results, query_time
 
 # ... (rest of the code: generate_response, flatten, main) ...
 def generate_response(prompt, retrieved_chunks):
+    start_time = time.time()
     system_prompt = """
     You are a Risk Management Officer and have to ensure bank is prepared for a regulatory examination focusing on quantity of risk and quality of model risk based on the provided context only.
     Use the retrieved information and reference sources accurately.
@@ -100,7 +106,10 @@ def generate_response(prompt, retrieved_chunks):
         model=model_name,
         messages=[{"role": "user", "content": full_prompt}]
     )
-    return response.choices[0].message.content
+
+    end_time = time.time()
+    response_time = end_time - start_time
+    return response.choices[0].message.content,response_time
 
 # Flatten results (helper function)
 def flatten(list_of_lists):
@@ -118,15 +127,22 @@ def main():
     user_query = st.text_input("Enter your query:")
 
     if user_query:
-        chromadb_results = query_chromadb(user_query, word2vec_model)
+        start_total_time = time.time()
+        chromadb_results, query_time = query_chromadb(user_query, word2vec_model)
         flat_chunks = flatten(chromadb_results["documents"])
         flat_metadata = flatten(chromadb_results["metadatas"])
         retrieved_chunks = [f"{chunk} (Source: {meta['page']})" for chunk, meta in zip(flat_chunks, flat_metadata)]
         full_retrieved_chunks = "\n\n---\n\n".join(retrieved_chunks)
 
-        response = generate_response(user_query, full_retrieved_chunks)
+        response,response_time = generate_response(user_query, full_retrieved_chunks)
+        end_total_time = time.time()    
+        total_time = end_total_time - start_total_time  
         st.write("**Response:**")
         st.write(response)
+
+        st.write(f"Query Time: {query_time:.4f} seconds")
+        st.write(f"Response Generation Time: {response_time:.4f} seconds")
+        st.write(f"Total Time: {total_time:.4f} seconds")
 
 if __name__ == "__main__":
     main()

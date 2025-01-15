@@ -13,7 +13,7 @@ AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
 
 # Configuration 
 API_KEY = OPEN_API_KEY
-PDF_PATHS = ["your pdf location here"]
+PDF_PATHS = ["D:\GenAI\RAG\FSB Bulletin on AI and ML.pdf", "D:\GenAI\RAG\OCC - MRM.pdf","D:\GenAI\RAG\SR - 11-7 MRM.pdf"]
 AZURE_ENDPOINT = AZURE_OPENAI_ENDPOINT
 COLLECTION_NAME = "doc_collection"
 API_VERSION = "2024-07-01-preview"
