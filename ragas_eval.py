@@ -19,7 +19,7 @@ env_path = Path(__file__).resolve().parent.parent /'.env'
 load_dotenv(dotenv_path=env_path)
 
 try:
-    api_key = "83fbAYH1eWkbEAaCRmubWuJPMBPKt3sa9MdBm60TGxJJJgbJeVzbJQQJ99AKACYeBjFXJ3w3AAABACOG9tjp"   #ToDo solve why api, endpoint etc can't be passed to wrapper through .env
+    api_key = ""   #ToDo solve why api, endpoint etc can't be passed to wrapper through .env
     api_version = "2024-07-01-preview"
     azure_endpoint = "https://sme-code-auzre-openai.openai.azure.com"
     model_name = "gpt-4o-mini"
