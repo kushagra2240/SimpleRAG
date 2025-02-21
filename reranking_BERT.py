@@ -18,9 +18,6 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import tiktoken
 import torch 
 
-
-
-
 load_dotenv()
 
 # Configuration
@@ -32,10 +29,10 @@ LLM_TEMPERATURE = 0
 RANKER_LLM_TEMPERATURE = 0 
 EMBEDDING_MODEL = "text-embedding-3-small"
 
-CHUNK_SIZE = 1000
-CHUNK_OVERLAP = 200
+CHUNK_SIZE = 2000
+CHUNK_OVERLAP = 400
   
-COLLECTION_NAME = f"Horizon_{CHUNK_SIZE}"
+COLLECTION_NAME = f"Horizon_{CHUNK_SIZE}_cleaned"
 
 RETRIEVAL_TOP_K = 15 # number of chunks to be retrieved
 RERANKING_CHUNK_COUNT = 5
@@ -43,19 +40,49 @@ RERANKING_CHUNK_COUNT = 5
 SOURCE_FILES_PATHS = ""
 SOURCE_DIRECTORY = r"D:\GenAI\RAG\data\POV Dataset"
 QUESTIONS_SOURCE = r'D:\GenAI\RAG\data\Benchmark_ExistingPOV_Horizon.xlsx'
-OUTPUT_FILE = r"D:\GenAI\RAG\result\rag_results_horizon_bert_reranking_base_query_q_t0_cs1000_jb.json"
+OUTPUT_FILE = r"D:\GenAI\RAG\result\rag_results_horizon_longform_bert_reranking_base_query_q_t0_cs2000_jb.json"
 
 # New: BERT Reranker
+# from transformers import AutoTokenizer, AutoModel
+# tokenizer = AutoTokenizer.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
+# model = AutoModel.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
+# from transformers import AutoTokenizer, AutoModelForMaskedLM
+# tokenizer = AutoTokenizer.from_pretrained("yikuan8/Clinical-Longformer")
+# model = AutoModelForMaskedLM.from_pretrained("yikuan8/Clinical-Longformer")
+
 class BERTReranker:
-    def __init__(self, model_name="bert-base-uncased"):  
+    def __init__(self, model_name="yikuan8/Clinical-Longformer"):  
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name).to("cuda" if torch.cuda.is_available() else "cpu")
+        self.max_len = self.tokenizer.model_max_length
+        default_max_len = 4096
+
+        if self.max_len is None:
+            print(f"Warning: model_max_length is None for {model_name}. Using default of 512.")
+            self.max_len = default_max_len
+        elif self.max_len > 8192: 
+            print(f"Warning: model_max_length is extremely large ({self.max_len}) for {model_name}. Using default of 512.")
+            self.max_len = default_max_len
+        elif not isinstance(self.max_len, int) or self.max_len <= 0: # Added type and value check
+            print(f"Warning: model_max_length is not a valid integer ({self.max_len}) for {model_name}. Using default of 512.")
+            self.max_len = default_max_len
+        else:
+            print(f"Max sequence length for {model_name}: {self.max_len}")
+
+        self.max_seq_length = self.max_len # Store the *validated* max length
+        # print(f"Max sequence length for {model_name}: {self.tokenizer.model_max_length}")
 
     def rerank(self, query: str, contexts: List[Dict], top_k: int = 5) -> Tuple[List[Dict], float]:
         start_time = time.time() 
         scores = []
         for context in contexts:
-            inputs = self.tokenizer(query, context["content"], return_tensors="pt").to(self.model.device)
+            inputs = self.tokenizer(
+                query,
+                context["content"],
+                return_tensors="pt",
+                truncation=True,  # Enable truncation
+                max_length=self.max_len # Use model's max length
+            ).to(self.model.device)
             with torch.no_grad():
                 logits = self.model(**inputs).logits
             score = logits[0, 1].item()  # Probability of being acceptable
@@ -69,6 +96,14 @@ class BERTReranker:
 
         return reranked_contexts, reranking_time
 
+def clean_text(text: str) -> str:
+    """
+    Cleans up text by removing extra whitespace, tabs, and newlines.
+    You can expand this function to include more cleaning steps as needed.
+    """
+    text = text.replace('\t', ' ').replace('\n', ' ')  # Replace tabs and newlines with spaces
+    text = ' '.join(text.split())  # Remove extra spaces (multiple spaces become single space)
+    return text
 
 def load_documents_from_files(file_paths: List[str]) -> List[Dict]:
 
@@ -91,8 +126,9 @@ def load_documents_from_files(file_paths: List[str]) -> List[Dict]:
             for page_num in range(len(reader.pages)):
                 page = reader.pages[page_num]
                 text = page.extract_text()
+                cleaned_text = clean_text(text)
                 metadata = {"page_number": page_num + 1, "document_name": os.path.basename(file_path)}
-                all_docs.append({"content": text, "metadata": metadata})
+                all_docs.append({"content": cleaned_text, "metadata": metadata})
         except Exception as e:
             print(f"Error loading {file_path}: {e}")
     return all_docs
@@ -123,8 +159,9 @@ def load_documents_from_folder(directory: str) -> List[Dict]:
                 for page_num in range(len(reader.pages)):
                     page = reader.pages[page_num]
                     text = page.extract_text()
+                    cleaned_text = clean_text(text)
                     metadata = {"page_number": page_num + 1, "document_name": filename}
-                    all_docs.append({"content": text, "metadata": metadata})
+                    all_docs.append({"content": cleaned_text, "metadata": metadata})
             except Exception as e:
                 print(f"Error loading {file_path}: {e}")
     return all_docs

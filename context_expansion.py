@@ -35,7 +35,6 @@ EMBEDDING_MODEL = "text-embedding-3-small"
 MAX_CONTEXT_LENGTH = 4096
 CHAT_BUFFER_SIZE = 4
 
-# ... (load_documents, split_documents, create_or_load_chroma_db, retrieve_contexts - same as before)
 def load_documents(file_paths: List[str]) -> List[Dict]:
 
     """Loads text and metadata from multiple PDF files.
