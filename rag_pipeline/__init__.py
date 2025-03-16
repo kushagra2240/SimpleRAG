@@ -1,0 +1,1 @@
+print("rag_pipeline package initialized")
